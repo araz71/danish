@@ -1,0 +1,7 @@
+#ifndef DANISH_DEF_H_
+#define DANISH_DEF_H_
+
+#define DANISH_MAX_DATA_SIZE 128
+#define DANISH_LINK_MAX_REGISTERS 0
+
+#endif

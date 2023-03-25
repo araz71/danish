@@ -34,26 +34,52 @@ int main() {
 		
 		uint16_t result_size = danish_make(address, func, reg, data_size, data, result);
 
-		if (result_size == 0) mlog("Create Packet : Packet size is zero\r\n");
-		if (result_size < (data_size + 7)) mlog("Create Packet : Packet size error(must : %d - is : %d)\r\n", (data_size + 7), result_size);
-		if (result[PACKET_ADDRESS] != address) mlog("Create Packet : Address mismatch(must : %d - is : %d)\r\n", address, result[PACKET_ADDRESS]);
-		if (result[PACKET_FUNCTION] != func) mlog("Create Packet : Function mismatch(must : %d - is : %d)\r\n", func, result[PACKET_FUNCTION]);
-		if (result[PACKET_REG_ID_MSB] != (reg >> 8)) mlog("Create Packet : MSB of Register mismatch(must : %d - is : %d)\r\n", reg >> 8, result[PACKET_REG_ID_MSB]);
-		if (result[PACKET_REG_ID_LSB] != (reg & 0xff)) mlog("Create Packet : LSB of Register mismatch(must : %d - is : %d)\r\n", reg & 0xff, result[PACKET_REG_ID_LSB]);
-		if (result[PACKET_LEN] != data_size) mlog("Create Packet : Data size mismatch(must : %d - is : %d)\r\n", data_size, result[PACKET_LEN]);		
-		if (memcmp(&result[PACKET_DATA], data, data_size) != 0) mlog("Create Packet : Packet data mismatch\r\n");
+		if (result_size == 0) 
+			mlog("Create Packet : Packet size is zero\r\n");
+	
+		if (result_size < (data_size + 7))
+			mlog("Create Packet : Packet size error(must : %d - is : %d)\r\n", (data_size + 7), result_size);
+	
+		if (result[PACKET_ADDRESS] != address)
+			mlog("Create Packet : Address mismatch(must : %d - is : %d)\r\n", address, result[PACKET_ADDRESS]);
+	
+		if (result[PACKET_FUNCTION] != func)
+			mlog("Create Packet : Function mismatch(must : %d - is : %d)\r\n", func, result[PACKET_FUNCTION]);
+		
+		if (result[PACKET_REG_ID_MSB] != (reg >> 8))
+			mlog("Create Packet : MSB of Register mismatch(must : %d - is : %d)\r\n", reg >> 8, result[PACKET_REG_ID_MSB]);
+		
+		if (result[PACKET_REG_ID_LSB] != (reg & 0xff))
+			mlog("Create Packet : LSB of Register mismatch(must : %d - is : %d)\r\n", reg & 0xff, result[PACKET_REG_ID_LSB]);
+		
+		if (result[PACKET_LEN] != data_size)
+			mlog("Create Packet : Data size mismatch(must : %d - is : %d)\r\n", data_size, result[PACKET_LEN]);		
+	
+		if (memcmp(&result[PACKET_DATA], data, data_size) != 0)
+			mlog("Create Packet : Packet data mismatch\r\n");
 
 		//indi ach
 		danish_st params;
 		int fret = danish_ach(result, result_size, &params);
-		if (fret == 0) mlog("Packet incomplte!\r\n");
-		if (fret == -1) mlog("Packet Checksum error\r\n");
+		if (fret == 0) {
+			mlog("Packet incomplte!\r\n");
+		} else if (fret == -1)
+			mlog("Packet Checksum error\r\n");
 
-		if (params.address != address) mlog("Open packet : Address mismatch(must : %d - is : %d)\r\n", address, params.address);
-		if (params.function != func) mlog("Open packet : Function mismatch(must : %d - is : %d)\r\n", func, params.function);
-		if (params.regID != reg) mlog("Open packet : Register mismatch(must : %d - is : %d\r\n", reg, params.regID);
-		if (params.len != data_size) mlog("Open packet : Data-len mismatch(must : %d - is : %d\r\n", data_size, params.len);
-		if (memcmp(params.data, data, data_size) != 0) mlog("Open packet : Data mistmach\r\n");
+		if (params.address != address)
+			mlog("Open packet : Address mismatch(must : %d - is : %d)\r\n", address, params.address);
+		
+		if (params.function != func)
+			mlog("Open packet : Function mismatch(must : %d - is : %d)\r\n", func, params.function);
+		
+		if (params.regID != reg)
+			mlog("Open packet : Register mismatch(must : %d - is : %d\r\n", reg, params.regID);
+	
+		if (params.len != data_size)
+			mlog("Open packet : Data-len mismatch(must : %d - is : %d\r\n", data_size, params.len);
+		
+		if (memcmp(params.data, data, data_size) != 0)
+			mlog("Open packet : Data mistmach\r\n");
 
 		//test of collect
 		for (int i = 0; i < result_size; i++)
