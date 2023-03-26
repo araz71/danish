@@ -25,20 +25,19 @@ MainWindow::MainWindow(QWidget *parent)
 
 void MainWindow::listiner_function() {
     while (1) {
-        if (serial_ready) {
-            serial_ready = 0;
-            serial_port_locker.lock();
-
+        serial_port_locker.lock();
+        if (serial_port->waitForReadyRead(100)) {
             QByteArray data = serial_port->readAll();
             danish_st result;
             if (danish_ach(reinterpret_cast<uint8_t*>(const_cast<char*>(data.toStdString().c_str())),
                        data.length(), &result) == 1)
             {
-
+                add_row("IN", result);
             }
-
-            serial_port_locker.unlock();
         }
+        serial_port_locker.unlock();
+
+        this_thread::sleep_for(100ms);
     }
 }
 
@@ -81,10 +80,6 @@ void MainWindow::on_btnOpen_clicked()
         listiner_thread = new std::thread(&MainWindow::listiner_function, this);
         ui->frmOpen->setEnabled(false);
         ui->frmRead->setEnabled(true);
-
-        QObject::connect(serial_port.get(), &QSerialPort::readyRead, [this]() {
-            this->serial_ready = 1;
-        });
 
     } else {
         QMessageBox::critical(this, "Serial Port", "Can not open selected serial port.");

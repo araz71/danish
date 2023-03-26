@@ -49,7 +49,6 @@ private:
     std::thread* listiner_thread;
     queue<danish_st> packets;
     unique_ptr<QSerialPort> serial_port;
-    atomic<int> serial_ready;
     std::mutex serial_port_locker;
 
     void listiner_function();
