@@ -1,4 +1,4 @@
-#include <danish.h>
+#include "danish.h"
 
 #ifdef DANISH_STATS
 uint32_t danish_stats_full_err = 0;

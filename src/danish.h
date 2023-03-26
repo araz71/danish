@@ -4,8 +4,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include <delay.h>
-#include <danish_conf.h>
+
+#include "delay.h"
+#include "danish_conf.h"
 
 #ifndef DANISH_MAX_DATA_SIZE
 #error "Please define DANISH_MAX_DATA_SIZE"

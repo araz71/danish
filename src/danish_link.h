@@ -4,16 +4,14 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <danish_conf.h>
-#include <danish.h>
-#include <log.h>
+
+#include "log.h"
+
+#include "danish_conf.h"
+#include "danish.h"
 
 #ifndef DANISH_LINK_MAX_REGISTERS
 #error "Please define DANISH_LINK_MAX_REGISTERS to show how many registers you have"
-#endif
-
-#ifndef DANISH_LINK_MAX_REGISTERS
-#error "please define maximum registers avaliable(DANISH_LINK_MAX_REGISTERS)"
 #endif
 
 typedef enum {

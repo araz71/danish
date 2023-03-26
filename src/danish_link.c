@@ -1,4 +1,4 @@
-#include <danish_link.h>
+#include "danish_link.h"
 
 link_reg_st __attribute__((weak)) registers[DANISH_LINK_MAX_REGISTERS];
 static uint8_t number_of_registered_ids = 0;
@@ -105,11 +105,11 @@ void danish_machine() {
 				}
 			}
 		}
-		// Check for any Read/Write request
+    // Check for any Read/Write request
 	} else {
 		for (int i = 0; i < number_of_registered_ids; i++) {
 			if (registers[i].flags & DANISH_LINK_FLAGS_WRITE) {
-				//prepare packet
+                // Prepares packet
 				mlog("Write requset reg %d on device %d\r\n",
 						registers[i].regID, registers[i].rwaddr);
 				tx_len = danish_make(registers[i].rwaddr, FUNC_WRITE, registers[i].regID,
