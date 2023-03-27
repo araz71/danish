@@ -7,18 +7,37 @@ uint32_t danish_stats_checksum_err = 0;
 uint32_t danish_stats_rcv = 0;
 #endif
 
+typedef enum {
+    PACKET_SOURCE_ADDRESS,
+    PACKET_DESTINATION_ADDRESS,
+    PACKET_FUNCTION,
+    PACKET_REG_ID_MSB,
+    PACKET_REG_ID_LSB,
+    PACKET_LEN,
+    PACKET_DATA,
+} packet_params_enu;
+
 static uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 10];
 static uint8_t danish_rx_cntr = 0;
 static uint64_t rx_timestamp;
 
-uint8_t danish_make(uint8_t address, function_enu function, uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet) {
+uint64_t __attribute__((weak)) get_timestamp() {
+    return 0;
+}
+
+uint8_t __attribute__((weak)) delay_ms(uint64_t ts, uint32_t delay) {
+    return 0;
+}
+
+uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function, uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet) {
 	uint8_t cntr = 0;
 	uint16_t checksum = 0;
 	
 	if (len > DANISH_MAX_DATA_SIZE)
 		return 0;
 
-	packet[cntr++] = address;
+    packet[cntr++] = source;
+    packet[cntr++] = destination;
 	packet[cntr++] = function;
 	packet[cntr++] = regID >> 8;
 	packet[cntr++] = regID;
@@ -36,15 +55,23 @@ uint8_t danish_make(uint8_t address, function_enu function, uint16_t regID, uint
 	packet[cntr++] = checksum >> 8;
 	packet[cntr++] = checksum;
 #endif
+
 	return cntr;
 }
 
-int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
+static int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
 	//summation of  address, function, register, len and checksum sizes
-	if (len < 7) return 0;
-	if (len < (7 + packet[PACKET_LEN])) return 0;
-	if (len > DANISH_MAX_PACKET_SIZE) return -1;
-	if (packet[PACKET_LEN] > DANISH_MAX_DATA_SIZE) return -1;
+    if (len < 8)
+        return 0;
+
+    if (len < (8 + packet[PACKET_LEN]))
+        return 0;
+
+    if (len > DANISH_MAX_PACKET_SIZE)
+        return -1;
+
+    if (packet[PACKET_LEN] > DANISH_MAX_DATA_SIZE)
+        return -1;
 
 	uint16_t checksum = 0;
 	uint16_t received_checksum = (packet[len - 2] << 8) + (packet[len - 1]); 
@@ -54,21 +81,24 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
 	for (uint8_t i = 0; i < len - 2; i++)
 		checksum += packet[i];
 
-	if (checksum != received_checksum) return -1;
+    if (checksum != received_checksum)
+        return -1;
 
 	result->function = packet[PACKET_FUNCTION];
-	result->address = packet[PACKET_ADDRESS];
+    result->src = packet[PACKET_SOURCE_ADDRESS];
+    result->dst = packet[PACKET_DESTINATION_ADDRESS];
 	result->regID = (packet[PACKET_REG_ID_MSB] << 8) + (packet[PACKET_REG_ID_LSB]);
 	result->len = packet[PACKET_LEN];
 	result->data = &packet[PACKET_DATA];
+
 	return 1;
 #endif
 }
 
-
-void danish_yiq(uint8_t c) {
+void danish_collect(uint8_t c) {
 	rx_timestamp = get_timestamp();
 	danish_rx_buffer[danish_rx_cntr++] = c;
+
 	if (danish_rx_cntr >= DANISH_MAX_PACKET_SIZE) {
 		danish_rx_cntr = 0;
 #ifdef DANISH_STATS
@@ -78,7 +108,7 @@ void danish_yiq(uint8_t c) {
 }
 
 int danish_parse(danish_st *packet) {
-	if (delay_ms(rx_timestamp, 1)) {
+    if (delay_ms(rx_timestamp, 5)) {
 #ifdef DANISH_STATS
 		if (danish_rx_cntr > 0)
 			danish_stats_timeout++;
@@ -86,7 +116,7 @@ int danish_parse(danish_st *packet) {
 		danish_rx_cntr = 0;
 	}
 
-	if (danish_rx_cntr >= 7) {
+    if (danish_rx_cntr >= 8) {
 		int fret = danish_ach(danish_rx_buffer, danish_rx_cntr, packet);
 		if (fret == -1) {
 			//checksum error
@@ -102,6 +132,7 @@ int danish_parse(danish_st *packet) {
 			return 1;
 		}
 	}
+
 	return 0;
 }
 

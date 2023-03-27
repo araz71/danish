@@ -14,14 +14,11 @@
 #error "Please define DANISH_LINK_MAX_REGISTERS to show how many registers you have"
 #endif
 
-typedef enum {
-	DANISH_LINK_FLAGS_WRITE = 0x01,
-	DANISH_LINK_FLAGS_READ 	= 0x02,
-} danish_link_flags_enu;
-
 typedef void (*filled_callback_ptr)(uint8_t);
-typedef void (*read_callback_ptr)(uint8_t);
+typedef void (*writer_ptr)(uint8_t*, uint8_t);
 
+#pragma pack(push)
+#pragma pack(1)
 typedef struct  {
 	uint16_t regID;		// RegisterID
 	uint8_t flags;		// Flags for read/write request
@@ -30,17 +27,17 @@ typedef struct  {
 
 	uint8_t rwaddr;		// Address of module which we want to read/write
 
-	void (*filled_callback)(uint8_t writer);	// Will call when buffer is filled by writer
-	uint8_t* (*read_callback)(uint8_t reader);		// Will call when a reader read buffer
-	void (*write_ack_callback)();			// Will call when destination returns write callback
-} link_reg_st;
+    filled_callback_ptr filled_callback;    // Will call when buffer is filled by writer
+    void (*write_ack_callback)();           // Will call when destination returns write callback
+} reg_st;
+#pragma pack(pop)
 
-int8_t danish_add_register(link_reg_st *reg);
+void danish_add_register(reg_st *reg);
 
-int8_t danish_write(uint8_t addr, uint16_t regID, uint8_t *data);
+int8_t danish_write(uint8_t destination, uint16_t regID);
 int8_t danish_read(uint8_t addr, uint16_t regID);
 
-void danish_link_init(uint8_t address, void(*write_interface)(uint8_t* data, uint16_t len));
+uint8_t danish_handle(danish_st* packet, uint8_t* response);
 
 void danish_machine();
 

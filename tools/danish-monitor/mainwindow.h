@@ -37,7 +37,8 @@ private:
 
     enum {
         COL_DIR,
-        COL_ADDRESS,
+        COL_SOURCE_ADDRESS,
+        COL_DESTINATION_ADDRESS,
         COL_REGISTER_ID,
         COL_FUNCTION,
         COL_DATA,

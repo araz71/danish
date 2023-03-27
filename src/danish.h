@@ -12,16 +12,11 @@
 #error "Please define DANISH_MAX_DATA_SIZE"
 #endif
 
-#define DANISH_MAX_PACKET_SIZE		DANISH_MAX_DATA_SIZE + 7
+#if DANISH_MAX_DATA_SIZE > 196
+#error "Data size should be less than 196 bytes"
+#endif
 
-typedef enum {
-	PACKET_ADDRESS,
-	PACKET_FUNCTION,
-	PACKET_REG_ID_MSB,
-	PACKET_REG_ID_LSB,
-	PACKET_LEN,
-	PACKET_DATA,
-} packet_params_enu;
+#define DANISH_MAX_PACKET_SIZE		DANISH_MAX_DATA_SIZE + 8
 
 typedef enum {
 	FUNC_WRITE,
@@ -30,18 +25,22 @@ typedef enum {
 	FUNC_READ_ACK
 } function_enu;
 
+#pragma pack(push)
+#pragma pack(1)
 typedef struct {
-	uint8_t address;
+    uint8_t src;
+    uint8_t dst;
 	function_enu function;
-	uint16_t regID;
-	uint8_t len;
+    uint16_t regID;
+    uint8_t len;
 	uint8_t *data;
 } danish_st;
+#pragma pack(pop)
 
-uint8_t danish_make(uint8_t address, function_enu function, uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet);
-int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result);
+uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
+                    uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet);
 
-void danish_yiq(uint8_t c);
+void danish_collect(uint8_t c);
 
 /*
  * return
@@ -49,6 +48,10 @@ void danish_yiq(uint8_t c);
  *	0 	: failed
  */
 int danish_parse(danish_st *packet);
+
+uint64_t __attribute__((weak)) get_timestamp();
+
+uint8_t __attribute__((weak)) delay_ms(uint64_t ts, uint32_t delay);
 
 #ifdef DANISH_STATS
 uint32_t danish_stats_get_successfull_received();
