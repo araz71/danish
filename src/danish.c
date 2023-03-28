@@ -59,8 +59,8 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function, 
 	return cntr;
 }
 
-static int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
-	//summation of  address, function, register, len and checksum sizes
+int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
+    // Summation of  address, function, register, len and checksum sizes
     if (len < 8)
         return 0;
 

@@ -39,6 +39,7 @@ typedef struct {
 
 uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
                     uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet);
+int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result);
 
 void danish_collect(uint8_t c);
 

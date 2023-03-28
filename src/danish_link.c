@@ -18,10 +18,10 @@ static uint16_t tx_len = 0;
 
 void danish_add_register(reg_st *reg)
 {
-    assert(number_of_registered_ids >= DANISH_LINK_MAX_REGISTERS);
+    assert(!(number_of_registered_ids >= DANISH_LINK_MAX_REGISTERS));
 
     for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++)
-        assert(registers[i].regID == reg->regID);
+        assert(!(registers[i].regID == reg->regID));
 
 	reg->rwaddr = 0;
 	reg->flags = 0;
@@ -32,7 +32,7 @@ void danish_add_register(reg_st *reg)
 }
 
 static reg_st* find_register_inf(uint16_t regID) {
-	for (uint8_t i = 0; i < number_of_registered_ids; i++) {
+	for (uint8_t i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
 		if (registers[i].regID == regID)
 			return &registers[i];
 	}
@@ -46,8 +46,9 @@ int8_t danish_write(uint8_t destination, uint16_t regID) {
     if (reg == NULL)
         return -1;	// Unknow register id
 
-    if (reg->flags)
+    if (reg->flags) {
         return 0;	// Busy for read/write
+    }
 
     reg->rwaddr = destination;
     reg->flags |= write_flag;
@@ -85,6 +86,9 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             return 0;
 
         if (packet->function == FUNC_WRITE) {
+            if (packet->len != reg->size)
+            	return 0;
+
             // Copys data into registers buffer and return WRITE_ACK
             memcpy(reg->ptr, packet->data, reg->size);
             if (reg->filled_callback != NULL)
@@ -107,6 +111,9 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             }
 
         } else if (packet->function == FUNC_READ_ACK) {
+            if (packet->len != reg->size)
+            	return 0;
+
             if (reg->rwaddr == packet->src && (reg->flags & read_ack_flag)) {
                 reg->flags &= ~read_ack_flag;
 
@@ -132,27 +139,33 @@ void danish_machine() {
         tx_len = danish_handle(&rcv_packet, tx_buffer);
 	}
 
-    if (tx_len != 0)
+    if (tx_len != 0) {
         danish_writer(tx_buffer, tx_len);
+        tx_len = 0;
+    }
 
     else {
-        for (int i = 0; i < number_of_registered_ids; i++) {
+        for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
             reg = &registers[i];
 
             if (reg->flags & 0x3) {
                 if (reg->flags & read_flag) {
                     reg->flags |= read_ack_flag;
+                    reg->flags &= ~read_flag;
                     tx_len = danish_make(danish_address, reg->rwaddr, FUNC_READ,
                                          reg->regID, 0, NULL, tx_buffer);
 
                 } else {
                     reg->flags |= write_ack_flag;
+                    reg->flags &= ~write_flag;
                     tx_len = danish_make(danish_address, reg->rwaddr, FUNC_WRITE,
                                          reg->regID, reg->size, reg->ptr, tx_buffer);
                 }
 
-                if (tx_len != 0)
+                if (tx_len != 0) {
                     danish_writer(tx_buffer, tx_len);
+                    tx_len = 0;
+                }
             }
         }
     }

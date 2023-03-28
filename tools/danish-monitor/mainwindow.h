@@ -33,6 +33,12 @@ private slots:
 
     void on_btnread_clicked();
 
+    void on_cbType_currentTextChanged(const QString &arg1);
+
+    void on_btnWrite_clicked();
+
+    void on_btnClear_clicked();
+
 private:
 
     enum {
@@ -43,6 +49,7 @@ private:
         COL_FUNCTION,
         COL_DATA,
         COL_LEN,
+        COL_MAX,
     } column_enu;
 
     Ui::MainWindow *ui;
@@ -55,5 +62,6 @@ private:
     void listiner_function();
 
     void add_row(QString dir, danish_st inf);
+    void serial_write(uint8_t* data, uint8_t len);
 };
 #endif // MAINWINDOW_H

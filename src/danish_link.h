@@ -41,4 +41,6 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response);
 
 void danish_machine();
 
+void danish_link_init(uint8_t address, writer_ptr write_interface);
+
 #endif

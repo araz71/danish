@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <danish_link.h>
+
 #include <QMessageBox>
 #include <QTableWidgetItem>
 
@@ -23,33 +25,51 @@ MainWindow::MainWindow(QWidget *parent)
     auto ports = QSerialPortInfo::availablePorts();
     for (auto port : ports)
         ui->cbPorts->addItem(port.portName());
+
+    danish_link_init(MyAddress, NULL);
+
+    uint8_t* buf1 = new uint8_t[10];
+    reg_st reg1;
+    reg1.ptr = buf1;
+    reg1.regID = 1;
+    reg1.size = 3;
+    reg1.filled_callback = NULL;
+    reg1.write_ack_callback = NULL;
+    memset(buf1, 10, reg1.size);
+
+    danish_add_register(&reg1);
 }
 
 void MainWindow::listiner_function() {
-    while (1) {
-        serial_port_locker.lock();
-        if (serial_port->waitForReadyRead(100)) {
-            QByteArray data = serial_port->readAll();
-            danish_st result;
+    serial_port_locker.lock();
+    QByteArray data = serial_port->readAll();
+    danish_st result;
+    char hex_format[1024];
+    char hex[10];
 
-            for (int i = 0; i < data.size(); i++)
-                danish_collect(data.at(i));
+    memset(hex_format, 0, sizeof(hex_format));
+    for (int i = 0; i < data.size(); i++) {
+        danish_collect(data.at(i));
 
-            if (danish_parse(&result) == 1) {
-                add_row("IN", result);
-                uint8_t buffer[256];
-                uint8_t size = danish_handle(&result, buffer);
-
-                if (size != 0) {
-                    serial_port->write(reinterpret_cast<char*>(buffer), size);
-                    serial_port->flush();
-                }
-            }
-        }
-        serial_port_locker.unlock();
-
-        this_thread::sleep_for(chrono::microseconds(100));
+        sprintf(hex, "0x%02X", static_cast<uint8_t>(data.at(i)));
+        strcat(hex_format, hex);
+        strcat(hex_format, " ");
     }
+    ui->textEditLog->setPlainText(ui->textEditLog->toPlainText() + "\r\nIN  : " + hex_format);
+
+    if (danish_parse(&result) == 1) {
+        add_row("IN", result);
+        uint8_t buffer[256];
+        uint8_t size = danish_handle(&result, buffer);
+
+        if (size != 0) {
+            danish_ach(buffer, size, &result);
+            add_row("My Response", result);
+            serial_write(buffer, size);
+        }
+    }
+
+    serial_port_locker.unlock();
 }
 
 void MainWindow::add_row(QString dir, danish_st inf)
@@ -87,6 +107,25 @@ void MainWindow::add_row(QString dir, danish_st inf)
 
 }
 
+void MainWindow::serial_write(uint8_t* data, uint8_t len)
+{
+    serial_port->write(reinterpret_cast<char*>(data), len);
+    serial_port->flush();
+
+    char buffer[1024];
+    char hex[10];
+
+    memset(buffer, 0, sizeof(buffer));
+    strcat(buffer, "Out : ");
+    for (int i = 0; i < len; i++) {
+        sprintf(hex, "0x%02X", data[i]);
+        strcat(buffer, hex);
+        strcat(buffer, " ");
+    }
+
+    ui->textEditLog->setPlainText(ui->textEditLog->toPlainText() + "\r\n" + QString(buffer));
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -98,12 +137,15 @@ void MainWindow::on_btnOpen_clicked()
     serial_port.reset(new QSerialPort);
 
     serial_port->setPortName(ui->cbPorts->currentText());
-    serial_port->setBaudRate(QSerialPort::Baud115200);
+    serial_port->setBaudRate(230400);
 
     if (serial_port->open(QSerialPort::ReadWrite)) {
-        listiner_thread = new std::thread(&MainWindow::listiner_function, this);
         ui->frmOpen->setEnabled(false);
         ui->frmRead->setEnabled(true);
+
+        QObject::connect(serial_port.get(), &QSerialPort::readyRead, [this](){
+            listiner_function();
+        });
 
     } else {
         QMessageBox::critical(this, "Serial Port", "Can not open selected serial port.");
@@ -125,9 +167,74 @@ void MainWindow::on_btnread_clicked()
     uint8_t len = danish_make(MyAddress, ui->leAddress->text().toInt(), FUNC_READ,
                 ui->leRegID->text().toInt(), 0, NULL, buffer);
 
-    serial_port->write(reinterpret_cast<char*>(buffer), len);
-    serial_port->flush();
+    serial_write(buffer, len);
 
     serial_port_locker.unlock();
 }
 
+
+void MainWindow::on_cbType_currentTextChanged(const QString &arg1)
+{
+    if (arg1 == "uint8_t") {
+        ui->leData->setValidator(new QIntValidator(0, 255, ui->leData));
+    } else if (arg1 == "uint16_t") {
+        ui->leData->setValidator(new QIntValidator(0, 65535, ui->leData));
+    } else if (arg1 == "uint32_t") {
+        ui->leData->setValidator(new QIntValidator(0, 0xFFFFFFFF, ui->leData));
+    } else if (arg1 == "String") {
+        ui->leData->setValidator(nullptr);
+    }
+}
+
+void MainWindow::on_btnWrite_clicked()
+{
+    serial_port_locker.lock();
+
+    int data_size = 0;
+    QString data_type = ui->cbType->currentText();
+    uint8_t* data;
+
+    int value;
+    data = reinterpret_cast<uint8_t*>(&value);
+
+    if (data_type == "uint8_t") {
+        data_size = 1;
+        value = ui->leData->text().toInt();
+
+    } else if (data_type == "uint16_t") {
+        data_size = 2;
+        value = ui->leData->text().toInt();
+
+    } else if (data_type == "uint32_t") {
+        data_size = 4;
+        value = ui->leData->text().toInt();
+
+    } else if (data_type == "String") {
+        data_size = ui->leData->text().size();
+        data = reinterpret_cast<uint8_t*>(const_cast<char*>(ui->leData->text().toStdString().c_str()));
+    }
+
+    add_row("Out", {
+                MyAddress, static_cast<uint8_t>(ui->leAddress->text().toInt()), FUNC_WRITE,
+                static_cast<uint16_t>(ui->leRegID->text().toInt()), static_cast<uint8_t>(data_size), data
+            });
+
+    uint8_t buffer[256];
+    uint8_t size = danish_make(MyAddress, static_cast<uint8_t>(ui->leAddress->text().toInt()),
+                               FUNC_WRITE, static_cast<uint16_t>(ui->leRegID->text().toInt()),
+                               static_cast<uint8_t>(data_size), data, buffer);
+    serial_write(buffer, size);
+
+    serial_port_locker.unlock();
+}
+
+void MainWindow::on_btnClear_clicked()
+{
+    ui->textEditLog->setPlainText("");
+    for (int i = 0; i < ui->tblPackets->rowCount(); i++) {
+        for (int j = 0; j < COL_MAX; j++)
+            if (ui->tblPackets->itemAt(i, j) != nullptr)
+                delete ui->tblPackets->itemAt(i, j);
+    }
+    ui->tblPackets->setRowCount(0);
+}
