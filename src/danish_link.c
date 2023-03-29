@@ -26,8 +26,10 @@ static uint16_t tx_len = 0;
 
 void danish_add_register(reg_st *reg)
 {
+	// Makes sure register container is not full.
     assert(!(number_of_registered_ids >= DANISH_LINK_MAX_REGISTERS));
 
+    // Makes sure requested register id is not registered before
     for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++)
         assert(!(registers[i].regID == reg->regID));
 
@@ -86,10 +88,11 @@ void danish_link_init(uint8_t address, writer_ptr write_interface,writer_busy_pt
 }
 
 uint8_t danish_handle(danish_st* packet, uint8_t* response) {
+	// Makes sure received packet is ours
     if (packet->dst == danish_address) {
         uint8_t return_size = 0;
 
-        // Checks for register number
+        // Checks for register number availability in register container.
         reg_st* reg = find_register_inf(packet->regID);
         if (reg == NULL)
             return 0;
@@ -105,6 +108,7 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             if (reg->filled_callback != NULL)
                 reg->filled_callback(packet->src);
 
+            // Creates write acknowledge packet.
             return_size = danish_make(danish_address, packet->src, FUNC_WRITE_ACK,
                                       	  packet->regID, 0, NULL, response);
 

@@ -17,7 +17,7 @@ typedef enum {
     PACKET_DATA,
 } packet_params_enu;
 
-static uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 10];
+static uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 2];
 static uint8_t danish_rx_cntr = 0;
 static uint64_t rx_timestamp;
 
@@ -33,6 +33,7 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function, 
 	uint8_t cntr = 0;
 	uint16_t checksum = 0;
 	
+	// Makes sure requested data size is less than configured maximum data size
 	if (len > DANISH_MAX_DATA_SIZE)
 		return 0;
 
@@ -43,12 +44,14 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function, 
 	packet[cntr++] = regID;
 	packet[cntr++] = len;
 
+	// Copies all data into packet
 	for (uint8_t i = 0; i < len; i++)
 		packet[cntr++] = data[i];
 
 #ifdef DANISH_CHECKSUM_CRC
 
 #else
+	// Calculates checksum
 	for (uint8_t i = 0; i < cntr; i++)
 		checksum += packet[i];
 
@@ -60,16 +63,19 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function, 
 }
 
 int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
-    // Summation of  address, function, register, len and checksum sizes
+    // It is necessary to given packet contains necessary fields.
     if (len < 8)
         return 0;
 
+    // When total size of given packet is less than data length then packet is incomplete.
     if (len < (8 + packet[PACKET_LEN]))
         return 0;
 
+    // Total size of given packet should not be greater than configured packet size.
     if (len > DANISH_MAX_PACKET_SIZE)
         return -1;
 
+    // Recevied data length should not be greater than configured data size.
     if (packet[PACKET_LEN] > DANISH_MAX_DATA_SIZE)
         return -1;
 
@@ -111,6 +117,7 @@ void danish_collect(uint8_t c) {
 }
 
 int danish_parse(danish_st *packet) {
+	// If last received byte by danish_collect is 5ms ago then current packet is not valid.
     if (delay_ms(rx_timestamp, 5)) {
 #ifdef DANISH_STATS
 		if (danish_rx_cntr > 0)
@@ -119,21 +126,20 @@ int danish_parse(danish_st *packet) {
 		danish_rx_cntr = 0;
 	}
 
-    if (danish_rx_cntr >= 8) {
-		int fret = danish_ach(danish_rx_buffer, danish_rx_cntr, packet);
-		if (fret == -1) {
-			//checksum error
+
+	int fret = danish_ach(danish_rx_buffer, danish_rx_cntr, packet);
+	if (fret == -1) {
+		//checksum error
 #ifdef DANISH_STATS
-			danish_stats_checksum_err++;
+		danish_stats_checksum_err++;
 #endif
-			danish_rx_cntr = 0;
-		} else if (fret == 1) {
+		danish_rx_cntr = 0;
+	} else if (fret == 1) {
 #ifdef DANISH_STATS
-			danish_stats_rcv++;
+		danish_stats_rcv++;
 #endif
-			danish_rx_cntr = 0;
-			return 1;
-		}
+		danish_rx_cntr = 0;
+		return 1;
 	}
 
 	return 0;
