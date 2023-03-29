@@ -26,7 +26,7 @@ MainWindow::MainWindow(QWidget *parent)
     for (auto port : ports)
         ui->cbPorts->addItem(port.portName());
 
-    danish_link_init(MyAddress, NULL);
+    danish_link_init(MyAddress, NULL, NULL);
 
     uint8_t* buf1 = new uint8_t[10];
     reg_st reg1;

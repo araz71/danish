@@ -10,10 +10,18 @@ typedef enum {
 
 reg_st __attribute__((weak)) registers[DANISH_LINK_MAX_REGISTERS];
 static uint8_t number_of_registered_ids = 0;
+
 static writer_ptr danish_writer;
+static writer_busy_ptr danish_writer_is_busy;
+
 static uint8_t danish_address;
 
-static uint8_t tx_buffer[DANISH_MAX_PACKET_SIZE];
+/*
+ * Tx buffer should be at least tow bytes greater than maximum packet size.
+ * Because It is hard to handle SR pin /when using DMA on RS485 bus on interrupt.
+ * These two bytes extra makes sure transition is completed for requested packet.
+ */
+static uint8_t tx_buffer[DANISH_MAX_PACKET_SIZE + 1];
 static uint16_t tx_len = 0;
 
 void danish_add_register(reg_st *reg)
@@ -71,9 +79,10 @@ int8_t danish_read(uint8_t addr, uint16_t regID) {
 	return 1;
 }
 
-void danish_link_init(uint8_t address, writer_ptr write_interface) {
+void danish_link_init(uint8_t address, writer_ptr write_interface,writer_busy_ptr writer_busy_callback) {
 	danish_writer = write_interface;
 	danish_address = address;
+	danish_writer_is_busy = writer_busy_callback;
 }
 
 uint8_t danish_handle(danish_st* packet, uint8_t* response) {
@@ -89,18 +98,22 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             if (packet->len != reg->size)
             	return 0;
 
+            // FIXME : We should have accessing level here. Maybe register is only readable.
+
             // Copys data into registers buffer and return WRITE_ACK
             memcpy(reg->ptr, packet->data, reg->size);
             if (reg->filled_callback != NULL)
                 reg->filled_callback(packet->src);
 
             return_size = danish_make(danish_address, packet->src, FUNC_WRITE_ACK,
-                                      packet->regID, 0, NULL, response);
+                                      	  packet->regID, 0, NULL, response);
 
         } else if (packet->function == FUNC_READ) {
+        	// FIXME : We should have accessing level here. Maybe register is only writable.
+
             // Returns READ_ACK with registers data
             return_size = danish_make(danish_address, packet->src, FUNC_READ_ACK,
-                                      packet->regID, reg->size, reg->ptr, response);
+                                      	  packet->regID, reg->size, reg->ptr, response);
 
         } else if (packet->function == FUNC_WRITE_ACK) {
             if (reg->rwaddr == packet->src && (reg->flags & write_ack_flag)) {
@@ -129,22 +142,24 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
     return 0;
 }
 
-// Use this machine when implementing under embedded systems
+// Use this machine when implementing in embedded systems
 void danish_machine() {
 	static danish_st rcv_packet;
-    reg_st* reg;
 
 	int8_t fret = danish_parse(&rcv_packet);
-	if (fret == 1) {
+	if (fret == 1)
         tx_len = danish_handle(&rcv_packet, tx_buffer);
-	}
 
     if (tx_len != 0) {
-        danish_writer(tx_buffer, tx_len);
-        tx_len = 0;
-    }
+    	if (!danish_writer_is_busy()) {
+    		danish_writer(tx_buffer, tx_len + 2);	// Two-bytes extra for SR pin
+    		tx_len = 0;
+    	}
 
-    else {
+    }
+#ifdef DANISH_MASTER
+    else if (!danish_writer_is_busy()) {
+        reg_st* reg;
         for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
             reg = &registers[i];
 
@@ -153,20 +168,21 @@ void danish_machine() {
                     reg->flags |= read_ack_flag;
                     reg->flags &= ~read_flag;
                     tx_len = danish_make(danish_address, reg->rwaddr, FUNC_READ,
-                                         reg->regID, 0, NULL, tx_buffer);
+                                         	 reg->regID, 0, NULL, tx_buffer);
 
                 } else {
                     reg->flags |= write_ack_flag;
                     reg->flags &= ~write_flag;
                     tx_len = danish_make(danish_address, reg->rwaddr, FUNC_WRITE,
-                                         reg->regID, reg->size, reg->ptr, tx_buffer);
+                                         	 reg->regID, reg->size, reg->ptr, tx_buffer);
                 }
 
                 if (tx_len != 0) {
-                    danish_writer(tx_buffer, tx_len);
+                    danish_writer(tx_buffer, tx_len + 2);	// Two-bytes extra for SR pin
                     tx_len = 0;
                 }
             }
         }
     }
+#endif
 }

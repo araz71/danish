@@ -16,6 +16,7 @@
 
 typedef void (*filled_callback_ptr)(uint8_t);
 typedef void (*writer_ptr)(uint8_t*, uint8_t);
+typedef uint8_t (*writer_busy_ptr)();
 
 #pragma pack(push)
 #pragma pack(1)
@@ -41,6 +42,6 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response);
 
 void danish_machine();
 
-void danish_link_init(uint8_t address, writer_ptr write_interface);
+void danish_link_init(uint8_t address, writer_ptr write_interface, writer_busy_ptr write_busy_callback);
 
 #endif

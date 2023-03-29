@@ -73,6 +73,9 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
     if (packet[PACKET_LEN] > DANISH_MAX_DATA_SIZE)
         return -1;
 
+    // Maybe received packet size is more than real transmitted packet size.
+    len = packet[PACKET_LEN] + 8;
+
 	uint16_t checksum = 0;
 	uint16_t received_checksum = (packet[len - 2] << 8) + (packet[len - 1]); 
 #ifdef DANISH_CHECKSUM_CRC
