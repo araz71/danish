@@ -15,17 +15,20 @@ INCLUDEPATH += ../../src/
 SOURCES += \
     ../../src/danish.c \
     ../../src/danish_link.c \
+    binaryinserter.cpp \
     delay.c \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
+    binaryinserter.h \
     danish_conf.h \
     delay.h \
     log.h \
     mainwindow.h
 
 FORMS += \
+    binaryinserter.ui \
     mainwindow.ui
 
 TRANSLATIONS += \

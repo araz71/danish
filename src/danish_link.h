@@ -14,22 +14,25 @@
 #error "Please define DANISH_LINK_MAX_REGISTERS to show how many registers you have"
 #endif
 
-typedef void (*filled_callback_ptr)(uint8_t);
+typedef void (*filled_callback_ptr)(uint16_t, uint8_t*);
 typedef void (*writer_ptr)(uint8_t*, uint8_t);
 typedef uint8_t (*writer_busy_ptr)();
 
 #pragma pack(push)
 #pragma pack(1)
 typedef struct  {
-	uint16_t regID;		// RegisterID
+	uint16_t bregID;	// Beginning of RegisterID
+	uint16_t eregID;	// End of RegisterID
+
 	uint8_t flags;		// Flags for read/write request
 	uint8_t *ptr;		// Pointer of buffer which will read or write in.
 	uint8_t size;		// Size of buffer
 
 	uint8_t rwaddr;		// Address of module which we want to read/write
 
-    filled_callback_ptr filled_callback;    // Will call when buffer is filled by writer
-    void (*write_ack_callback)();           // Will call when destination returns write callback
+    filled_callback_ptr filled_callback;    	// Will call when buffer is filled by writer
+    void (*write_ack_callback)();           	// Will call when destination returns write callback
+    uint8_t* (*read_callback)(uint16_t regID);	// Will call when reading requested
 } reg_st;
 #pragma pack(pop)
 

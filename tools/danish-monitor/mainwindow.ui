@@ -367,6 +367,11 @@
                  <string>String</string>
                 </property>
                </item>
+               <item>
+                <property name="text">
+                 <string>Binary</string>
+                </property>
+               </item>
               </widget>
              </item>
              <item>

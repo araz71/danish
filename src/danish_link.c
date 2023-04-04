@@ -30,8 +30,13 @@ void danish_add_register(reg_st *reg)
     assert(!(number_of_registered_ids >= DANISH_LINK_MAX_REGISTERS));
 
     // Makes sure requested register id is not registered before
-    for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++)
-        assert(!(registers[i].regID == reg->regID));
+    for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
+        assert(!(registers[i].bregID == reg->bregID));
+        assert(!(registers[i].eregID == reg->eregID));
+
+        assert(!(registers[i].eregID == reg->bregID));
+        assert(!(registers[i].bregID == reg->eregID));
+    }
 
 	reg->rwaddr = 0;
 	reg->flags = 0;
@@ -43,7 +48,7 @@ void danish_add_register(reg_st *reg)
 
 static reg_st* find_register_inf(uint16_t regID) {
 	for (uint8_t i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
-		if (registers[i].regID == regID)
+		if (regID >= registers[i].bregID && regID <= registers[i].eregID)
 			return &registers[i];
 	}
 
@@ -104,20 +109,28 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             // FIXME : We should have accessing level here. Maybe register is only readable.
 
             // Copys data into registers buffer and return WRITE_ACK
-            memcpy(reg->ptr, packet->data, reg->size);
+            if (reg->ptr != NULL)
+            	memcpy(reg->ptr, packet->data, reg->size);
+
             if (reg->filled_callback != NULL)
-                reg->filled_callback(packet->src);
+                reg->filled_callback(packet->regID, packet->data);
 
             // Creates write acknowledge packet.
             return_size = danish_make(danish_address, packet->src, FUNC_WRITE_ACK,
                                       	  packet->regID, 0, NULL, response);
 
         } else if (packet->function == FUNC_READ) {
-        	// FIXME : We should have accessing level here. Maybe register is only writable.
+        	// FIXME : We should have accessing level here because maybe register is only writable.
+        	uint8_t* data;
+
+        	if (reg->read_callback != NULL)
+        		data = reg->read_callback(packet->regID);
+        	else if (reg->ptr != NULL)
+        		data = reg->ptr;
 
             // Returns READ_ACK with registers data
             return_size = danish_make(danish_address, packet->src, FUNC_READ_ACK,
-                                      	  packet->regID, reg->size, reg->ptr, response);
+                                      	  packet->regID, reg->size, data, response);
 
         } else if (packet->function == FUNC_WRITE_ACK) {
             if (reg->rwaddr == packet->src && (reg->flags & write_ack_flag)) {
@@ -136,7 +149,7 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
 
                 memcpy(reg->ptr, packet->data, reg->size);
                 if (reg->filled_callback != NULL)
-                    reg->filled_callback(packet->src);
+                    reg->filled_callback(packet->regID, packet->data);
             }
         }
 

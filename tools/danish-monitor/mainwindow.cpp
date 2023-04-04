@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "binaryinserter.h"
 
 #include <danish_link.h>
 
@@ -31,7 +32,8 @@ MainWindow::MainWindow(QWidget *parent)
     uint8_t* buf1 = new uint8_t[10];
     reg_st reg1;
     reg1.ptr = buf1;
-    reg1.regID = 1;
+    reg1.bregID = 1;
+    reg1.eregID = 1;
     reg1.size = 3;
     reg1.filled_callback = NULL;
     reg1.write_ack_callback = NULL;
@@ -175,6 +177,8 @@ void MainWindow::on_btnread_clicked()
 
 void MainWindow::on_cbType_currentTextChanged(const QString &arg1)
 {
+    ui->leData->setEnabled(true);
+
     if (arg1 == "uint8_t") {
         ui->leData->setValidator(new QIntValidator(0, 255, ui->leData));
     } else if (arg1 == "uint16_t") {
@@ -183,6 +187,11 @@ void MainWindow::on_cbType_currentTextChanged(const QString &arg1)
         ui->leData->setValidator(new QIntValidator(0, 0xFFFFFFFF, ui->leData));
     } else if (arg1 == "String") {
         ui->leData->setValidator(nullptr);
+    } else if (arg1 == "Binary") {
+        BinaryInserter inserter;
+        inserter.exec();
+        binary_data = inserter.binary_data;
+        ui->leData->setEnabled(false);
     }
 }
 
@@ -212,6 +221,9 @@ void MainWindow::on_btnWrite_clicked()
     } else if (data_type == "String") {
         data_size = ui->leData->text().size();
         data = reinterpret_cast<uint8_t*>(const_cast<char*>(ui->leData->text().toStdString().c_str()));
+    } else if (data_type == "Binary") {
+        data_size = binary_data.size();
+        data = reinterpret_cast<uint8_t*>(const_cast<char*>(binary_data.toStdString().c_str()));
     }
 
     add_row("Out", {

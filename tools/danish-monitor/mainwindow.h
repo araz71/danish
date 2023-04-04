@@ -59,6 +59,8 @@ private:
     unique_ptr<QSerialPort> serial_port;
     std::mutex serial_port_locker;
 
+    QByteArray binary_data;
+
     void listiner_function();
 
     void add_row(QString dir, danish_st inf);
