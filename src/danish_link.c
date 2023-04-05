@@ -108,7 +108,7 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
 
             // FIXME : We should have accessing level here. Maybe register is only readable.
 
-            // Copys data into registers buffer and return WRITE_ACK
+            // Copies data into registers buffer and return WRITE_ACK
             if (reg->ptr != NULL)
             	memcpy(reg->ptr, packet->data, reg->size);
 
@@ -147,7 +147,9 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             if (reg->rwaddr == packet->src && (reg->flags & read_ack_flag)) {
                 reg->flags &= ~read_ack_flag;
 
-                memcpy(reg->ptr, packet->data, reg->size);
+                if (reg->ptr != NULL)
+                	memcpy(reg->ptr, packet->data, reg->size);
+
                 if (reg->filled_callback != NULL)
                     reg->filled_callback(packet->regID, packet->data);
             }
