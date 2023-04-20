@@ -79,9 +79,10 @@ int8_t danish_read(uint8_t addr, uint16_t regID) {
 
     if (reg->flags)
         return 0;	// Busy for read/write
-
-	reg->rwaddr = addr;
-    reg->flags |= read_flag;
+    else {
+    	reg->rwaddr = addr;
+    	reg->flags |= read_flag;
+    }
 
 	return 1;
 }
@@ -103,9 +104,6 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
             return 0;
 
         if (packet->function == FUNC_WRITE) {
-            if (packet->len != reg->size)
-            	return 0;
-
             // FIXME : We should have accessing level here. Maybe register is only readable.
 
             // Copies data into registers buffer and return WRITE_ACK

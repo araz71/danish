@@ -203,6 +203,9 @@ void MainWindow::on_btnWrite_clicked()
     QString data_type = ui->cbType->currentText();
     uint8_t* data;
 
+    uint8_t string_value[DANISH_MAX_DATA_SIZE];
+    memset(string_value, 0, DANISH_MAX_DATA_SIZE);
+
     int value;
     data = reinterpret_cast<uint8_t*>(&value);
 
@@ -220,7 +223,11 @@ void MainWindow::on_btnWrite_clicked()
 
     } else if (data_type == "String") {
         data_size = ui->leData->text().size();
-        data = reinterpret_cast<uint8_t*>(const_cast<char*>(ui->leData->text().toStdString().c_str()));
+        strncpy(reinterpret_cast<char*>(string_value), ui->leData->text().toStdString().c_str(),
+                data_size);
+        data_size++;
+        data = string_value;
+
     } else if (data_type == "Binary") {
         data_size = binary_data.size();
         data = reinterpret_cast<uint8_t*>(const_cast<char*>(binary_data.toStdString().c_str()));
@@ -231,7 +238,7 @@ void MainWindow::on_btnWrite_clicked()
                 static_cast<uint16_t>(ui->leRegID->text().toInt()), static_cast<uint8_t>(data_size), data
             });
 
-    uint8_t buffer[256];
+    uint8_t buffer[DANISH_MAX_PACKET_SIZE];
     uint8_t size = danish_make(MyAddress, static_cast<uint8_t>(ui->leAddress->text().toInt()),
                                FUNC_WRITE, static_cast<uint16_t>(ui->leRegID->text().toInt()),
                                static_cast<uint8_t>(data_size), data, buffer);

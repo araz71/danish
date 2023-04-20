@@ -21,7 +21,9 @@ BinaryInserter::~BinaryInserter()
 
 void BinaryInserter::on_btnOk_clicked()
 {
-    char* buffer = new char[ui->plainData->toPlainText().size()];
+    char* buffer = new char[ui->plainData->toPlainText().size() + 1];
+    memset(buffer, 0, sizeof(ui->plainData->toPlainText().size() + 1));
+
     strncpy(buffer,
             const_cast<char*>(ui->plainData->toPlainText().toStdString().c_str()),
             ui->plainData->toPlainText().size());
@@ -49,6 +51,7 @@ void BinaryInserter::on_btnOk_clicked()
     char* token = strtok(buffer, " ");
     while (token != NULL) {
         if (strlen(token) > 2) {
+            qDebug("%s", token);
             QMessageBox::critical(this, "Binary Insertion", "Inputs should be in hex format");
             return;
         } else {
