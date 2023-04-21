@@ -26,7 +26,7 @@ static uint16_t tx_len = 0;
 
 void danish_add_register(reg_st *reg)
 {
-	// Makes sure register container is not full.
+    // Makes sure register container is not full.
     assert(!(number_of_registered_ids >= DANISH_LINK_MAX_REGISTERS));
 
     // Makes sure requested register id is not registered before
@@ -38,21 +38,21 @@ void danish_add_register(reg_st *reg)
         assert(!(registers[i].bregID == reg->eregID));
     }
 
-	reg->rwaddr = 0;
-	reg->flags = 0;
+    reg->rwaddr = 0;
+    reg->flags = 0;
 
     memcpy((uint8_t*)&registers[number_of_registered_ids], (uint8_t*)reg, sizeof(reg_st));
 
-	number_of_registered_ids++;
+    number_of_registered_ids++;
 }
 
 static reg_st* find_register_inf(uint16_t regID) {
-	for (uint8_t i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
-		if (regID >= registers[i].bregID && regID <= registers[i].eregID)
-			return &registers[i];
-	}
+    for (uint8_t i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
+        if (regID >= registers[i].bregID && regID <= registers[i].eregID)
+            return &registers[i];
+    }
 
-	return NULL;
+    return NULL;
 }
 
 int8_t danish_write(uint8_t destination, uint16_t regID) {
@@ -68,7 +68,7 @@ int8_t danish_write(uint8_t destination, uint16_t regID) {
     reg->rwaddr = destination;
     reg->flags |= write_flag;
 
-	return 1;
+    return 1;
 }
 
 int8_t danish_read(uint8_t addr, uint16_t regID) {
@@ -80,21 +80,21 @@ int8_t danish_read(uint8_t addr, uint16_t regID) {
     if (reg->flags)
         return 0;	// Busy for read/write
     else {
-    	reg->rwaddr = addr;
-    	reg->flags |= read_flag;
+        reg->rwaddr = addr;
+        reg->flags |= read_flag;
     }
 
-	return 1;
+    return 1;
 }
 
 void danish_link_init(uint8_t address, writer_ptr write_interface,writer_busy_ptr writer_busy_callback) {
-	danish_writer = write_interface;
-	danish_address = address;
-	danish_writer_is_busy = writer_busy_callback;
+    danish_writer = write_interface;
+    danish_address = address;
+    danish_writer_is_busy = writer_busy_callback;
 }
 
 uint8_t danish_handle(danish_st* packet, uint8_t* response) {
-	// Makes sure received packet is ours
+    // Makes sure received packet is ours
     if (packet->dst == danish_address) {
         uint8_t return_size = 0;
 
@@ -108,27 +108,27 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
 
             // Copies data into registers buffer and return WRITE_ACK
             if (reg->ptr != NULL)
-            	memcpy(reg->ptr, packet->data, reg->size);
+                memcpy(reg->ptr, packet->data, reg->size);
 
             if (reg->filled_callback != NULL)
                 reg->filled_callback(packet->regID, packet->data);
 
             // Creates write acknowledge packet.
             return_size = danish_make(danish_address, packet->src, FUNC_WRITE_ACK,
-                                      	  packet->regID, 0, NULL, response);
+                                        packet->regID, 0, NULL, response);
 
         } else if (packet->function == FUNC_READ) {
-        	// FIXME : We should have accessing level here because maybe register is only writable.
-        	uint8_t* data;
+            // FIXME : We should have accessing level here because maybe register is only writable.
+            uint8_t* data;
 
-        	if (reg->read_callback != NULL)
-        		data = reg->read_callback(packet->regID);
-        	else if (reg->ptr != NULL)
-        		data = reg->ptr;
+            if (reg->read_callback != NULL)
+                data = reg->read_callback(packet->regID);
+            else if (reg->ptr != NULL)
+                data = reg->ptr;
 
             // Returns READ_ACK with registers data
             return_size = danish_make(danish_address, packet->src, FUNC_READ_ACK,
-                                      	  packet->regID, reg->size, data, response);
+                                        packet->regID, reg->size, data, response);
 
         } else if (packet->function == FUNC_WRITE_ACK) {
             if (reg->rwaddr == packet->src && (reg->flags & write_ack_flag)) {
@@ -140,41 +140,41 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
 
         } else if (packet->function == FUNC_READ_ACK) {
             if (packet->len != reg->size)
-            	return 0;
+                return 0;
 
             if (reg->rwaddr == packet->src && (reg->flags & read_ack_flag)) {
                 reg->flags &= ~read_ack_flag;
 
                 if (reg->ptr != NULL)
-                	memcpy(reg->ptr, packet->data, reg->size);
+                memcpy(reg->ptr, packet->data, reg->size);
 
                 if (reg->filled_callback != NULL)
                     reg->filled_callback(packet->regID, packet->data);
             }
         }
 
-        return return_size;
-    }
+    return return_size;
+}
 
-    return 0;
+return 0;
 }
 
 // Use this machine when implementing in embedded systems
 void danish_machine() {
-	static danish_st rcv_packet;
+    static danish_st rcv_packet;
 
-	int8_t fret = danish_parse(&rcv_packet);
-	if (fret == 1)
+    int8_t fret = danish_parse(&rcv_packet);
+    if (fret == 1)
         tx_len = danish_handle(&rcv_packet, tx_buffer);
 
     if (tx_len != 0) {
-    	if (!danish_writer_is_busy()) {
-    		danish_writer(tx_buffer, tx_len + 2);	// Two-bytes extra for SR pin
-    		tx_len = 0;
-    	}
-
+        if (!danish_writer_is_busy()) {
+        danish_writer(tx_buffer, tx_len + 2);	// Two-bytes extra for SR pin
+        tx_len = 0;
+        }
     }
-#ifdef DANISH_MASTER
+
+    #ifdef DANISH_MASTER
     else if (!danish_writer_is_busy()) {
         reg_st* reg;
         for (int i = 0; i < DANISH_LINK_MAX_REGISTERS; i++) {
@@ -185,13 +185,13 @@ void danish_machine() {
                     reg->flags |= read_ack_flag;
                     reg->flags &= ~read_flag;
                     tx_len = danish_make(danish_address, reg->rwaddr, FUNC_READ,
-                                         	 reg->regID, 0, NULL, tx_buffer);
+                                             reg->regID, 0, NULL, tx_buffer);
 
                 } else {
                     reg->flags |= write_ack_flag;
                     reg->flags &= ~write_flag;
                     tx_len = danish_make(danish_address, reg->rwaddr, FUNC_WRITE,
-                                         	 reg->regID, reg->size, reg->ptr, tx_buffer);
+                                             reg->regID, reg->size, reg->ptr, tx_buffer);
                 }
 
                 if (tx_len != 0) {

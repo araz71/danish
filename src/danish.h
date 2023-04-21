@@ -19,10 +19,10 @@
 #define DANISH_MAX_PACKET_SIZE		DANISH_MAX_DATA_SIZE + 8
 
 typedef enum {
-	FUNC_WRITE,
-	FUNC_WRITE_ACK,
-	FUNC_READ,
-	FUNC_READ_ACK
+    FUNC_WRITE,
+    FUNC_WRITE_ACK,
+    FUNC_READ,
+    FUNC_READ_ACK
 } function_enu;
 
 #pragma pack(push)
@@ -30,10 +30,10 @@ typedef enum {
 typedef struct {
     uint8_t src;			// Source Address
     uint8_t dst;			// Destination Address
-	function_enu function;	// Function
+    function_enu function;	// Function
     uint16_t regID;			// Register number
     uint8_t len;			// Length of data
-	uint8_t *data;			// Data
+    uint8_t *data;			// Data
 } danish_st;
 #pragma pack(pop)
 
