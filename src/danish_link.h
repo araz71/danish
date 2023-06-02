@@ -14,6 +14,8 @@
 #error "Please define DANISH_LINK_MAX_REGISTERS to show how many registers you have"
 #endif
 
+typedef uint16_t RegID;
+
 typedef void (*filled_callback_ptr)(uint16_t, uint8_t*);
 typedef void (*writer_ptr)(uint8_t*, uint8_t);
 typedef uint8_t (*writer_busy_ptr)();
