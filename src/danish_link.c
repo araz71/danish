@@ -169,8 +169,8 @@ void danish_machine() {
 
     if (tx_len != 0) {
         if (!danish_writer_is_busy()) {
-        danish_writer(tx_buffer, tx_len + 2);	// Two-bytes extra for SR pin
-        tx_len = 0;
+        	danish_writer(tx_buffer, tx_len + 2);	// Two-bytes extra for SR pin
+        	tx_len = 0;
         }
     }
 
