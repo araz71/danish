@@ -6,6 +6,7 @@
 
 #include <QMessageBox>
 #include <QTableWidgetItem>
+#include <QTimer>
 
 #define MyAddress   23
 
@@ -40,12 +41,30 @@ MainWindow::MainWindow(QWidget *parent)
     memset(buf1, 10, reg1.size);
 
     danish_add_register(&reg1);
+
+    QTimer *tmr_danish = new QTimer();
+    connect(tmr_danish, &QTimer::timeout, this, [this](){
+        danish_st result;
+
+        if (danish_parse(&result) == 1) {
+            add_row("IN", result);
+            uint8_t buffer[256];
+            uint8_t size = danish_handle(&result, buffer);
+
+            if (size != 0) {
+                danish_ach(buffer, size, &result);
+                add_row("My Response", result);
+                serial_write(buffer, size);
+            }
+        }
+    });
+
+    tmr_danish->start(100);
 }
 
 void MainWindow::listiner_function() {
     serial_port_locker.lock();
     QByteArray data = serial_port->readAll();
-    danish_st result;
     char hex_format[1024];
     char hex[10];
 
@@ -58,18 +77,6 @@ void MainWindow::listiner_function() {
         strcat(hex_format, " ");
     }
     ui->textEditLog->setPlainText(ui->textEditLog->toPlainText() + "\r\nIN  : " + hex_format);
-
-    if (danish_parse(&result) == 1) {
-        add_row("IN", result);
-        uint8_t buffer[256];
-        uint8_t size = danish_handle(&result, buffer);
-
-        if (size != 0) {
-            danish_ach(buffer, size, &result);
-            add_row("My Response", result);
-            serial_write(buffer, size);
-        }
-    }
 
     serial_port_locker.unlock();
 }
