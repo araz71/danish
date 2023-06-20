@@ -87,7 +87,7 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
 #ifdef DANISH_CHECKSUM_CRC
 
 #else
-    for (uint8_t i = 0; i < len; i++)
+    for (uint8_t i = 0; i < len - 2; i++)
         checksum += packet[i];
 
     if (checksum != received_checksum)
@@ -125,7 +125,6 @@ int danish_parse(danish_st *packet) {
     #endif
         danish_rx_cntr = 0;
     }
-
 
     int fret = danish_ach(danish_rx_buffer, danish_rx_cntr, packet);
     if (fret == -1) {
