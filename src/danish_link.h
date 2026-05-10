@@ -30,6 +30,12 @@ typedef struct  {
 	uint8_t *ptr;		// Pointer of buffer which will read or write in.
 	uint8_t size;		// Size of buffer
 
+	uint8_t *response_data;
+	uint8_t response_size;
+
+	uint8_t* write_ack_data;
+	uint8_t write_ack_size;
+
 	uint8_t rwaddr;		// Address of module which we want to read/write
 
     filled_callback_ptr filled_callback;    	// Will call when buffer is filled by writer

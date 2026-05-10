@@ -8,7 +8,18 @@
 #include <QTableWidgetItem>
 #include <QTimer>
 
-#define MyAddress   23
+#define MyAddress   1
+
+#pragma pack(push)
+#pragma pack(1)
+
+typedef struct {
+    char fw_version[20];
+    char release_date[40];
+    char dev_name[20];
+} device_inf_st;
+
+#pragma pack(pop)
 
 class MyItem : public QTableWidgetItem {
 public:
@@ -25,27 +36,42 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     auto ports = QSerialPortInfo::availablePorts();
-    for (auto port : ports)
+    for (auto& port : ports)
         ui->cbPorts->addItem(port.portName());
 
     danish_link_init(MyAddress, NULL, NULL);
 
-    uint8_t* buf1 = new uint8_t[10];
+    static device_inf_st device_inf = {
+        "v1.0",
+        "24/3/21 17:48",
+        "Led-Controller",
+    };
+
+    reg_st reg_dev;
+    reg_dev.ptr = (uint8_t *)&device_inf;
+    reg_dev.bregID = 101;
+    reg_dev.eregID = 101;
+    reg_dev.size = sizeof(device_inf_st);
+    reg_dev.filled_callback = NULL;
+    reg_dev.write_ack_callback = NULL;
+    reg_dev.read_callback = NULL;
+    danish_add_register(&reg_dev);
+
+    static char reg_1_v[10] = "Salam";
     reg_st reg1;
-    reg1.ptr = buf1;
+    reg1.ptr = (uint8_t *)reg_1_v;
     reg1.bregID = 1;
     reg1.eregID = 1;
-    reg1.size = 3;
+    reg1.size = 10;
     reg1.filled_callback = NULL;
     reg1.write_ack_callback = NULL;
-    memset(buf1, 10, reg1.size);
-
+    reg1.read_callback = NULL;
     danish_add_register(&reg1);
 
-    QTimer *tmr_danish = new QTimer();
-    connect(tmr_danish, &QTimer::timeout, this, [this](){
-        danish_st result;
 
+    QTimer *tmr_danish = new QTimer();
+    connect(tmr_danish, &QTimer::timeout, this, [this]() {
+        danish_st result;
         if (danish_parse(&result) == 1) {
             add_row("IN", result);
             uint8_t buffer[256];
@@ -152,7 +178,7 @@ void MainWindow::on_btnOpen_clicked()
         ui->frmOpen->setEnabled(false);
         ui->frmRead->setEnabled(true);
 
-        QObject::connect(serial_port.get(), &QSerialPort::readyRead, [this](){
+        QObject::connect(serial_port.get(), &QSerialPort::readyRead, [this]() {
             listiner_function();
         });
 
@@ -243,12 +269,13 @@ void MainWindow::on_btnWrite_clicked()
     add_row("Out", {
                 MyAddress, static_cast<uint8_t>(ui->leAddress->text().toInt()), FUNC_WRITE,
                 static_cast<uint16_t>(ui->leRegID->text().toInt()), static_cast<uint8_t>(data_size), data
-            });
+    });
 
     uint8_t buffer[DANISH_MAX_PACKET_SIZE];
     uint8_t size = danish_make(MyAddress, static_cast<uint8_t>(ui->leAddress->text().toInt()),
                                FUNC_WRITE, static_cast<uint16_t>(ui->leRegID->text().toInt()),
                                static_cast<uint8_t>(data_size), data, buffer);
+
     serial_write(buffer, size);
 
     serial_port_locker.unlock();
@@ -258,9 +285,12 @@ void MainWindow::on_btnClear_clicked()
 {
     ui->textEditLog->setPlainText("");
     for (int i = 0; i < ui->tblPackets->rowCount(); i++) {
-        for (int j = 0; j < COL_MAX; j++)
-            if (ui->tblPackets->itemAt(i, j) != nullptr)
+        for (int j = 0; j < COL_MAX; j++) {
+            if (ui->tblPackets->itemAt(i, j) != nullptr) {
                 delete ui->tblPackets->itemAt(i, j);
+            }
+        }
     }
+
     ui->tblPackets->setRowCount(0);
 }

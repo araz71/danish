@@ -81,9 +81,6 @@ void danish_collect(uint8_t c);
  */
 int danish_parse(danish_st *packet);
 
-uint64_t __attribute__((weak)) get_timestamp();
-
-uint8_t __attribute__((weak)) delay_ms(uint64_t ts, uint32_t delay);
 
 #ifdef DANISH_STATS
 uint32_t danish_stats_get_successfull_received();

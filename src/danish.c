@@ -17,19 +17,16 @@ typedef enum {
     PACKET_DATA,
 } packet_params_enu;
 
-static uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 2];
-static uint8_t danish_rx_cntr = 0;
-static uint64_t rx_timestamp;
+static volatile uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 2];
+static volatile uint8_t danish_rx_cntr = 0;
+static volatile uint64_t rx_timestamp;
 
-uint64_t __attribute__((weak)) get_timestamp() {
-    return 0;
-}
+extern uint64_t get_timestamp();
+extern uint8_t delay_ms(uint64_t ts, uint32_t delay);
 
-uint8_t __attribute__((weak)) delay_ms(uint64_t ts, uint32_t delay) {
-    return 0;
-}
-
-uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function, uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet) {
+uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
+		uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet)
+{
     uint8_t cntr = 0;
     uint16_t checksum = 0;
 	
@@ -128,7 +125,7 @@ int danish_parse(danish_st *packet) {
 
     int fret = danish_ach(danish_rx_buffer, danish_rx_cntr, packet);
     if (fret == -1) {
-        //checksum error
+        // Checksum error
     #ifdef DANISH_STATS
         danish_stats_checksum_err++;
     #endif
