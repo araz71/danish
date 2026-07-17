@@ -100,7 +100,7 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
         }
 
         if (packet->function == FUNC_WRITE) {
-            // FIXME : We should have accessing level here. Maybe register is only readable.
+            // TODO : We should have accessing level here. Maybe register is only readable.
 
             // Copies data into registers buffer and return WRITE_ACK
             if (reg->ptr != NULL) {
@@ -118,7 +118,7 @@ uint8_t danish_handle(danish_st* packet, uint8_t* response) {
                                         packet->regID, reg->response_size, reg->response_data, response);
 
         } else if (packet->function == FUNC_READ) {
-            // FIXME : We should have accessing level here because maybe register is only writable.
+            // TODO : We should have accessing level here because maybe register is only writable.
             uint8_t* data;
 
             if (reg->read_callback != NULL) {

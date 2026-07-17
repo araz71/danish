@@ -17,9 +17,9 @@ typedef enum {
     PACKET_DATA,
 } packet_params_enu;
 
-static volatile uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 2];
-static volatile uint8_t danish_rx_cntr = 0;
-static volatile uint64_t rx_timestamp;
+static uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 2];
+static uint8_t danish_rx_cntr = 0;
+static uint64_t rx_timestamp;
 
 extern uint64_t get_timestamp();
 extern uint8_t delay_ms(uint64_t ts, uint32_t delay);
