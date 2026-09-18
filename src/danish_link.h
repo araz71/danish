@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "log.h"
-
 #include "danish_conf.h"
 #include "danish.h"
 

@@ -22,28 +22,61 @@ static uint8_t danish_rx_cntr = 0;
 static uint64_t rx_timestamp;
 
 extern uint64_t get_timestamp();
-extern uint8_t delay_ms(uint64_t ts, uint32_t delay);
+extern bool delay_ms(uint64_t ts, uint32_t delay);
+
+#ifdef DANISH_ENCRYPT
+uint8_t* DANISH_AES_KEY;
+void danish_set_aes_key(const uint8_t* aes_key) {
+	DANISH_AES_KEY = (uint8_t *) aes_key;
+}
+#endif
 
 uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
 		uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet)
 {
     uint8_t cntr = 0;
     uint16_t checksum = 0;
-	
-    // Makes sure requested data size is less than configured maximum data size
-    if (len > DANISH_MAX_DATA_SIZE)
-        return 0;
 
     packet[cntr++] = source;
     packet[cntr++] = destination;
     packet[cntr++] = function;
     packet[cntr++] = regID >> 8;
     packet[cntr++] = regID;
+
+#if DANISH_ENCRYPT
+    uint8_t append_len = 0;
+	while ((len%16) != 0) {
+    	len++;
+    	append_len++;
+    }
+#endif
+
+    // Makes sure requested data size is less than configured maximum data size
+    if (len > DANISH_MAX_DATA_SIZE)
+        return 0;
+
     packet[cntr++] = len;
 
+#if DANISH_ENCRYPT
+    uint8_t data_location = cntr;
+	for (uint8_t i = 0; i < (len - append_len); i++) {
+		packet[cntr++] = data[i];
+	}
+	uint64_t ts = get_timestamp();
+	for (int i = 0; i < append_len; i++) {
+		packet[cntr++] = ts;
+		ts = ts >> 8;
+	}
+
+	uint8_t parts = len / 16;
+	for (int i = 0; i < parts; i++) {
+		AES_ECB_encrypt(&packet[data_location + (i * 16)], DANISH_AES_KEY, &packet[data_location + (i * 16)], 16);
+	}
+#else
     // Copies all data into packet
     for (uint8_t i = 0; i < len; i++)
         packet[cntr++] = data[i];
+#endif
 
 #ifdef DANISH_CHECKSUM_CRC
 
