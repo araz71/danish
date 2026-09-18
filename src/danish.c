@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include "danish.h"
 #include "aes.h"
 
@@ -7,16 +9,6 @@ uint32_t danish_stats_timeout = 0;
 uint32_t danish_stats_checksum_err = 0;
 uint32_t danish_stats_rcv = 0;
 #endif
-
-typedef enum {
-    PACKET_SOURCE_ADDRESS,
-    PACKET_DESTINATION_ADDRESS,
-    PACKET_FUNCTION,
-    PACKET_REG_ID_MSB,
-    PACKET_REG_ID_LSB,
-    PACKET_LEN,
-    PACKET_DATA,
-} packet_params_enu;
 
 #ifdef DANISH_ENCRYPT
 static uint8_t* DANISH_AES_KEY;
@@ -68,7 +60,7 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
     	packet[cntr++] = packet_id++;
 
     for (int i = 0; i < (len / 16); i++)
-    	AES_ECB_encrypt(&packet[PACKET_DATA + (i * 16)], DANISH_AES_KEY, &packet[PACKET_DATA + (i * 16)], 16);
+        AES_ECB_encrypt(&packet[PACKET_DATA + (i * 16) + 1], DANISH_AES_KEY, &packet[PACKET_DATA + (i * 16) + 1], 16);
 #endif
 
 #ifdef DANISH_CHECKSUM_CRC
@@ -87,12 +79,17 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
 
 int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
     // It is necessary to given packet contains necessary fields.
+#ifdef DANISH_ENCRYPT
+    if (len < 9)
+        return 0;
+#else
     if (len < 8)
         return 0;
+#endif
 
     // When total size of given packet is less than data length then packet is incomplete.
 #ifdef DANISH_ENCRYPT
-    if (len < (8 + packet[PACKET_LEN + 1]))
+    if (len < (9 + packet[PACKET_LEN + 1]))
         return 0;
 #else
     if (len < (8 + packet[PACKET_LEN]))
@@ -114,7 +111,7 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
 
     // Maybe received packet size is more than real transmitted packet size.
 #ifdef DANISH_ENCRYPT
-    len = packet[PACKET_LEN + 1] + 8;
+    len = packet[PACKET_LEN + 1] + 9;
 #else
     len = packet[PACKET_LEN] + 8;
 #endif
@@ -137,11 +134,14 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
     result->len = packet[PACKET_LEN];
 
 #ifdef DANISH_ENCRYPT
-    for (int i = 0; i < (packet[PACKET_LEN] / 16); i++)
-    	AES_ECB_decrypt(&packet[PACKET_DATA + (i * 16)], DANISH_AES_KEY, &packet[PACKET_DATA + (i * 16)], 16);
+    for (int i = 0; i < (packet[PACKET_LEN + 1] / 16); i++)
+    	AES_ECB_decrypt(&packet[PACKET_DATA + (i * 16) + 1], DANISH_AES_KEY, &packet[PACKET_DATA + (i * 16) + 1], 16);
+
+    result->data = &packet[PACKET_DATA + 1];
+#else
+    result->data = &packet[PACKET_DATA];
 #endif
 
-    result->data = &packet[PACKET_DATA];
     return 1;
 #endif
 }
@@ -171,6 +171,7 @@ int danish_parse(danish_st *packet) {
     int fret = danish_ach(danish_rx_buffer, danish_rx_cntr, packet);
     if (fret == -1) {
         // Checksum error
+        printf("Checksum error\r\n");
     #ifdef DANISH_STATS
         danish_stats_checksum_err++;
     #endif

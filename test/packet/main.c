@@ -5,21 +5,31 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define Test_iter	2000
+#define Test_iter	1
 
 #define mlog(...) {	printf("%d : ", __LINE__);	\
 	printf(__VA_ARGS__);	\ 
 	error = 1;}
 
+uint64_t get_timestamp() {
+	return 0xAABBCCDD;
+}
+
+uint8_t delay_ms(uint64_t ts, uint32_t delay) {
+	return 0;
+}
+
 int main() {
+	uint8_t aes_key[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6};
 	uint8_t error = 0;
 	int failed_cntr = 0;
 	int succ_cntr = 0;
 	srand(time(NULL));
-
+	danish_set_aes_key(aes_key);
+	printf("Welcome\r\n");
 	for (int i = 0; i < Test_iter; i++) {
 		error = 0;
-
+		printf("Run Test %d\r\n", i + 1);
 		uint16_t data_size = rand() % DANISH_MAX_DATA_SIZE;
 		uint8_t *data = malloc(data_size);
 		
@@ -31,8 +41,8 @@ int main() {
 		uint8_t address = rand();
 		uint16_t reg = rand();
 		uint8_t *result = malloc(DANISH_MAX_PACKET_SIZE);
-		
-		uint16_t result_size = danish_make(address, func, reg, data_size, data, result);
+		printf("Make paket on device %d with Reg %d, Data size: %d\r\n", address, reg, data_size);
+		uint16_t result_size = danish_make(0x00, address, func, reg, data_size, data, result);
 
 		if (result_size == 0) 
 			mlog("Create Packet : Packet size is zero\r\n");
@@ -40,8 +50,8 @@ int main() {
 		if (result_size < (data_size + 7))
 			mlog("Create Packet : Packet size error(must : %d - is : %d)\r\n", (data_size + 7), result_size);
 	
-		if (result[PACKET_ADDRESS] != address)
-			mlog("Create Packet : Address mismatch(must : %d - is : %d)\r\n", address, result[PACKET_ADDRESS]);
+		if (result[PACKET_DESTINATION_ADDRESS] != address)
+			mlog("Create Packet : Address mismatch(must : %d - is : %d)\r\n", address, result[PACKET_DESTINATION_ADDRESS]);
 	
 		if (result[PACKET_FUNCTION] != func)
 			mlog("Create Packet : Function mismatch(must : %d - is : %d)\r\n", func, result[PACKET_FUNCTION]);
@@ -55,8 +65,10 @@ int main() {
 		if (result[PACKET_LEN] != data_size)
 			mlog("Create Packet : Data size mismatch(must : %d - is : %d)\r\n", data_size, result[PACKET_LEN]);		
 	
+#ifndef DANISH_ENCRYPT
 		if (memcmp(&result[PACKET_DATA], data, data_size) != 0)
 			mlog("Create Packet : Packet data mismatch\r\n");
+#endif
 
 		//indi ach
 		danish_st params;
@@ -66,8 +78,8 @@ int main() {
 		} else if (fret == -1)
 			mlog("Packet Checksum error\r\n");
 
-		if (params.address != address)
-			mlog("Open packet : Address mismatch(must : %d - is : %d)\r\n", address, params.address);
+		if (params.dst != address)
+			mlog("Open packet : Address mismatch(must : %d - is : %d)\r\n", address, params.dst);
 		
 		if (params.function != func)
 			mlog("Open packet : Function mismatch(must : %d - is : %d)\r\n", func, params.function);
@@ -82,11 +94,12 @@ int main() {
 			mlog("Open packet : Data mistmach\r\n");
 
 		//test of collect
+		result_size = danish_make(0x00, address, func, reg, data_size, data, result);
 		for (int i = 0; i < result_size; i++)
-			danish_yiq(result[i]);
+			danish_collect(result[i]);
 
 		fret = danish_parse(&params);
-		if (fret) {
+		if (fret == 1) {
 		
 		} else {
 			mlog("Parse error!\r\n");

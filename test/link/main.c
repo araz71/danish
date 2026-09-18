@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <danish_link.h>
-#include <log.h>
 
 uint8_t reg120_buffer[10];
 
@@ -29,21 +28,26 @@ void reg120_write_ack() {
 void danish_write_interface(uint8_t* data, uint16_t size) {
 	printf("\r\n**************Request to transmit**************");
 	for (int i = 0; i < size; i++) {
-		danish_yiq(data[i]);
+		danish_collect(data[i]);
 		if ((i%16) == 0) printf("\r\n");
 		printf("%02x ", data[i]);
 	}
 	printf("\r\n***********************************************\r\n\r\n");
 }
 
+static uint8_t danish_write_busy() {
+	return 0;
+}
+
 int main() {
 	uint8_t tester_st = 0;
 
-	link_reg_st reg;
+	reg_st reg;
 
-	danish_link_init(10, &danish_write_interface);
+	danish_link_init(10, danish_write_interface, danish_write_busy);
 
-	reg.regID = 120;
+	reg.bregID = 120;
+	reg.eregID = 120;
 	reg.ptr = reg120_buffer;
 	reg.size = sizeof(reg120_buffer);
 	reg.filled_callback = &reg120_filled;
@@ -58,7 +62,7 @@ int main() {
 	while (1) {
 		if (tester_st == 0) {
 			mlog("Writing on 120th register on device(10)");
-			danish_write(10, 120, buffer);
+			danish_write(10, 120);
 			tester_st = 1;
 		} else if (tester_st == 1) {
 			if (reg120_filled_flag == 1) {

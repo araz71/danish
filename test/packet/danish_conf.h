@@ -6,4 +6,6 @@
 #define DANISH_MAX_DATA_SIZE 128
 #define DANISH_LINK_MAX_REGISTERS 0
 
+#define DANISH_ENCRYPT
+
 #endif

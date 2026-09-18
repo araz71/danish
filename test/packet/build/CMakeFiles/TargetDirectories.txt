@@ -1,0 +1,3 @@
+/home/duman/danish/test/packet/build/CMakeFiles/PACKET_TEST.dir
+/home/duman/danish/test/packet/build/CMakeFiles/edit_cache.dir
+/home/duman/danish/test/packet/build/CMakeFiles/rebuild_cache.dir

@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "delay.h"
 #include "danish_conf.h"
 
 #ifndef DANISH_MAX_DATA_SIZE
@@ -24,6 +23,16 @@ typedef enum {
     FUNC_READ,
     FUNC_READ_ACK
 } function_enu;
+
+typedef enum {
+    PACKET_SOURCE_ADDRESS,
+    PACKET_DESTINATION_ADDRESS,
+    PACKET_FUNCTION,
+    PACKET_REG_ID_MSB,
+    PACKET_REG_ID_LSB,
+    PACKET_LEN,
+    PACKET_DATA,
+} packet_params_enu;
 
 #pragma pack(push)
 #pragma pack(1)
