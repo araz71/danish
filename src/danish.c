@@ -1,4 +1,5 @@
 #include "danish.h"
+#include "aes.h"
 
 #ifdef DANISH_STATS
 uint32_t danish_stats_full_err = 0;
@@ -17,19 +18,19 @@ typedef enum {
     PACKET_DATA,
 } packet_params_enu;
 
+#ifdef DANISH_ENCRYPT
+static uint8_t* DANISH_AES_KEY;
+void danish_set_aes_key(const uint8_t* key) {
+	DANISH_AES_KEY = (uint8_t *) key;
+}
+#endif
+
 static uint8_t danish_rx_buffer[DANISH_MAX_PACKET_SIZE + 2];
 static uint8_t danish_rx_cntr = 0;
 static uint64_t rx_timestamp;
 
 extern uint64_t get_timestamp();
 extern bool delay_ms(uint64_t ts, uint32_t delay);
-
-#ifdef DANISH_ENCRYPT
-uint8_t* DANISH_AES_KEY;
-void danish_set_aes_key(const uint8_t* aes_key) {
-	DANISH_AES_KEY = (uint8_t *) aes_key;
-}
-#endif
 
 uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
 		uint16_t regID, uint8_t len, uint8_t *data, uint8_t *packet)
@@ -43,12 +44,13 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
     packet[cntr++] = regID >> 8;
     packet[cntr++] = regID;
 
-#if DANISH_ENCRYPT
-    uint8_t append_len = 0;
-	while ((len%16) != 0) {
+	uint8_t real_len = len;
+
+#ifdef DANISH_ENCRYPT
+	while ((len % 16) != 0)
     	len++;
-    	append_len++;
-    }
+
+    packet[cntr++] = real_len;
 #endif
 
     // Makes sure requested data size is less than configured maximum data size
@@ -57,25 +59,16 @@ uint8_t danish_make(uint8_t source, uint8_t destination, function_enu function,
 
     packet[cntr++] = len;
 
-#if DANISH_ENCRYPT
-    uint8_t data_location = cntr;
-	for (uint8_t i = 0; i < (len - append_len); i++) {
-		packet[cntr++] = data[i];
-	}
-	uint64_t ts = get_timestamp();
-	for (int i = 0; i < append_len; i++) {
-		packet[cntr++] = ts;
-		ts = ts >> 8;
-	}
-
-	uint8_t parts = len / 16;
-	for (int i = 0; i < parts; i++) {
-		AES_ECB_encrypt(&packet[data_location + (i * 16)], DANISH_AES_KEY, &packet[data_location + (i * 16)], 16);
-	}
-#else
-    // Copies all data into packet
-    for (uint8_t i = 0; i < len; i++)
+    for (uint8_t i = 0; i < real_len; i++)
         packet[cntr++] = data[i];
+
+#ifdef DANISH_ENCRYPT
+	static uint8_t packet_id = 0;
+    for (uint8_t i = 0; i < (len - real_len); i++)
+    	packet[cntr++] = packet_id++;
+
+    for (int i = 0; i < (len / 16); i++)
+    	AES_ECB_encrypt(&packet[PACKET_DATA + (i * 16)], DANISH_AES_KEY, &packet[PACKET_DATA + (i * 16)], 16);
 #endif
 
 #ifdef DANISH_CHECKSUM_CRC
@@ -98,19 +91,33 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
         return 0;
 
     // When total size of given packet is less than data length then packet is incomplete.
+#ifdef DANISH_ENCRYPT
+    if (len < (8 + packet[PACKET_LEN + 1]))
+        return 0;
+#else
     if (len < (8 + packet[PACKET_LEN]))
         return 0;
+#endif
 
     // Total size of given packet should not be greater than configured packet size.
     if (len > DANISH_MAX_PACKET_SIZE)
         return -1;
 
     // Recevied data length should not be greater than configured data size.
+#ifdef DANISH_ENCRYPT
+    if (packet[PACKET_LEN + 1] > DANISH_MAX_DATA_SIZE)
+        return -1;
+#else
     if (packet[PACKET_LEN] > DANISH_MAX_DATA_SIZE)
         return -1;
+#endif
 
     // Maybe received packet size is more than real transmitted packet size.
+#ifdef DANISH_ENCRYPT
+    len = packet[PACKET_LEN + 1] + 8;
+#else
     len = packet[PACKET_LEN] + 8;
+#endif
 
     uint16_t checksum = 0;
     uint16_t received_checksum = (packet[len - 2] << 8) + (packet[len - 1]);
@@ -128,8 +135,13 @@ int8_t danish_ach(uint8_t *packet, uint8_t len, danish_st *result) {
     result->dst = packet[PACKET_DESTINATION_ADDRESS];
     result->regID = (packet[PACKET_REG_ID_MSB] << 8) + (packet[PACKET_REG_ID_LSB]);
     result->len = packet[PACKET_LEN];
-    result->data = &packet[PACKET_DATA];
 
+#ifdef DANISH_ENCRYPT
+    for (int i = 0; i < (packet[PACKET_LEN] / 16); i++)
+    	AES_ECB_decrypt(&packet[PACKET_DATA + (i * 16)], DANISH_AES_KEY, &packet[PACKET_DATA + (i * 16)], 16);
+#endif
+
+    result->data = &packet[PACKET_DATA];
     return 1;
 #endif
 }

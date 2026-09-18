@@ -81,6 +81,9 @@ void danish_collect(uint8_t c);
  */
 int danish_parse(danish_st *packet);
 
+#ifdef DANISH_ENCRYPT
+void danish_set_aes_key(const uint8_t* key);
+#endif
 
 #ifdef DANISH_STATS
 uint32_t danish_stats_get_successfull_received();
